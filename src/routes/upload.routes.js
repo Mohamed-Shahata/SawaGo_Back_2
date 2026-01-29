@@ -1,0 +1,29 @@
+import express from "express";
+import { upload } from "../config/multer.config.js";
+
+const router = express.Router();
+
+router.post(
+  "/upload-images",
+  upload.fields([
+    { name: "face", maxCount: 1 },
+    { name: "idFront", maxCount: 1 },
+    { name: "idBack", maxCount: 1 },
+    { name: "license", maxCount: 1 },
+  ]),
+  (req, res) => {
+    const files = req.files;
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+
+    const urls = {
+      face: files.face ? baseUrl + files.face[0].path : null,
+      idFront: files.idFront ? baseUrl + files.idFront[0].path : null,
+      idBack: files.idBack ? baseUrl + files.idBack[0].path : null,
+      license: files.license ? baseUrl + files.license[0].path : null,
+    };
+
+    res.json({ urls });
+  }
+);
+
+export default router;
