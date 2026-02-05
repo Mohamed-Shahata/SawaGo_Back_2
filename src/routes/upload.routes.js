@@ -28,7 +28,7 @@ router.post(
     const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
     const urls = {
-      profile: files.profile ? baseUrl + files.profile[0].path : null,
+      face: files.face ? baseUrl + files.face[0].path : null,
       idFront: files.idFront ? baseUrl + files.idFront[0].path : null,
       idBack: files.idBack ? baseUrl + files.idBack[0].path : null,
     };
