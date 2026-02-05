@@ -3,6 +3,40 @@ import { upload } from "../config/multer.config.js";
 
 const router = express.Router();
 
+router.post("/upload-profile-image", upload.single("profile"), (req, res) => {
+  const file = req.file;
+  const baseUrl = `${req.protocol}://${req.get("host")}/`;
+
+  if (!file) {
+    return res.status(400).json({ message: "No image uploaded" });
+  }
+
+  res.json({
+    profileImage: baseUrl + file.path,
+  });
+});
+
+router.post(
+  "/upload-profile-and-id",
+  upload.fields([
+    { name: "profile", maxCount: 1 },
+    { name: "idFront", maxCount: 1 },
+    { name: "idBack", maxCount: 1 },
+  ]),
+  (req, res) => {
+    const files = req.files;
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+
+    const urls = {
+      profile: files.profile ? baseUrl + files.profile[0].path : null,
+      idFront: files.idFront ? baseUrl + files.idFront[0].path : null,
+      idBack: files.idBack ? baseUrl + files.idBack[0].path : null,
+    };
+
+    res.json({ urls });
+  },
+);
+
 router.post(
   "/upload-images",
   upload.fields([
@@ -23,7 +57,7 @@ router.post(
     };
 
     res.json({ urls });
-  }
+  },
 );
 
 export default router;
