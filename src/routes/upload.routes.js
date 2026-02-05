@@ -3,7 +3,7 @@ import { upload } from "../config/multer.config.js";
 
 const router = express.Router();
 
-router.post("/upload-profile-image", upload.single("profile"), (req, res) => {
+router.post("/upload-face-image", upload.single("face"), (req, res) => {
   const file = req.file;
   const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
@@ -19,7 +19,7 @@ router.post("/upload-profile-image", upload.single("profile"), (req, res) => {
 router.post(
   "/upload-profile-and-id",
   upload.fields([
-    { name: "profile", maxCount: 1 },
+    { name: "face", maxCount: 1 },
     { name: "idFront", maxCount: 1 },
     { name: "idBack", maxCount: 1 },
   ]),
