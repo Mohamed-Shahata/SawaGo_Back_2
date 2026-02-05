@@ -17,7 +17,7 @@ router.post("/upload-face-image", upload.single("face"), (req, res) => {
 });
 
 router.post(
-  "/upload-profile-and-id",
+  "/upload-face-and-id",
   upload.fields([
     { name: "face", maxCount: 1 },
     { name: "idFront", maxCount: 1 },
