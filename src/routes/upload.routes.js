@@ -37,6 +37,35 @@ router.post(
   },
 );
 
+router.put(
+  "/update-id-images",
+  upload.fields([
+    { name: "idFront", maxCount: 1 },
+    { name: "idBack", maxCount: 1 },
+  ]),
+  (req, res) => {
+    const files = req.files || {};
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+
+    const urls = {
+      idFront: files.idFront ? baseUrl + files.idFront[0].path : null,
+      idBack: files.idBack ? baseUrl + files.idBack[0].path : null,
+    };
+
+    // لو مفيش ولا صورة اترفعت
+    if (!urls.idFront && !urls.idBack) {
+      return res.status(400).json({
+        message: "No ID images uploaded",
+      });
+    }
+
+    res.json({
+      message: "ID images updated successfully",
+      urls,
+    });
+  },
+);
+
 router.post(
   "/upload-images",
   upload.fields([
