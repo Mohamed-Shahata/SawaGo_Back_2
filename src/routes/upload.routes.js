@@ -1,20 +1,9 @@
 import express from "express";
 import { upload } from "../config/multer.config.js";
+import fs from "fs";
+import path from "path";
 
 const router = express.Router();
-
-router.post("/upload-face-image", upload.single("face"), (req, res) => {
-  const file = req.file;
-  const baseUrl = `${req.protocol}://${req.get("host")}/`;
-
-  if (!file) {
-    return res.status(400).json({ message: "No image uploaded" });
-  }
-
-  res.json({
-    profileImage: baseUrl + file.path,
-  });
-});
 
 router.post(
   "/upload-face-and-id",
@@ -43,26 +32,65 @@ router.put(
     { name: "idFront", maxCount: 1 },
     { name: "idBack", maxCount: 1 },
   ]),
-  (req, res) => {
-    const files = req.files || {};
-    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+  async (req, res) => {
+    try {
+      const files = req.files || {};
+      const { oldIdFront, oldIdBack } = req.body;
 
-    const urls = {
-      idFront: files.idFront ? baseUrl + files.idFront[0].path : null,
-      idBack: files.idBack ? baseUrl + files.idBack[0].path : null,
-    };
+      const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
-    // لو مفيش ولا صورة اترفعت
-    if (!urls.idFront && !urls.idBack) {
-      return res.status(400).json({
-        message: "No ID images uploaded",
+      const deleteFile = (fileUrl) => {
+        if (!fileUrl) return;
+
+        try {
+          const filePath = fileUrl.replace(baseUrl, "");
+
+          const fullPath = path.join(__dirname, "..", filePath);
+
+          if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+          }
+        } catch (err) {
+          console.log("Error deleting file:", err.message);
+        }
+      };
+
+      if (files.idFront && oldIdFront) {
+        deleteFile(oldIdFront);
+        console.log("delete idFront");
+      }
+
+      if (files.idBack && oldIdBack) {
+        deleteFile(oldIdBack);
+        console.log("delete idBack");
+      }
+
+      const urls = {
+        idFront: files.idFront
+          ? baseUrl + files.idFront[0].path
+          : oldIdFront || null,
+
+        idBack: files.idBack
+          ? baseUrl + files.idBack[0].path
+          : oldIdBack || null,
+      };
+
+      if (!urls.idFront && !urls.idBack) {
+        return res.status(400).json({
+          message: "No ID images uploaded",
+        });
+      }
+
+      res.json({
+        message: "ID images updated successfully",
+        urls,
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: "Server error",
+        error: err.message,
       });
     }
-
-    res.json({
-      message: "ID images updated successfully",
-      urls,
-    });
   },
 );
 
