@@ -95,6 +95,60 @@ router.put(
 );
 
 router.post(
+  "/upload-featured-destination",
+  upload.single("destinationImage"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "لم يتم رفع أي صورة",
+        });
+      }
+
+      const { placeName } = req.body;
+      const baseUrl = `${req.protocol}://${req.get("host")}/`;
+
+      // إنشاء اسم فريد للملف
+      const timestamp = Date.now();
+      const sanitizedPlaceName = placeName
+        ? placeName.replace(/\s+/g, "-")
+        : "destination";
+      const fileName = `featured-destinations/${sanitizedPlaceName}-${timestamp}`;
+
+      // مسار الملف الكامل
+      const filePath = req.file.path;
+      const newFilePath = path.join(
+        path.dirname(filePath),
+        `${sanitizedPlaceName}-${timestamp}${path.extname(filePath)}`,
+      );
+
+      // إعادة تسمية الملف
+      fs.renameSync(filePath, newFilePath);
+
+      // رابط الصورة
+      const relativePath = newFilePath.replace(path.join(__dirname, ".."), "");
+      const imageUrl = baseUrl + relativePath.replace(/\\/g, "/");
+
+      res.json({
+        success: true,
+        message: "تم رفع الصورة بنجاح",
+        imageUrl: imageUrl,
+        imagePath: relativePath,
+        fileName: path.basename(newFilePath),
+      });
+    } catch (error) {
+      console.error("Error uploading destination image:", error);
+      res.status(500).json({
+        success: false,
+        message: "حدث خطأ أثناء رفع الصورة",
+        error: error.message,
+      });
+    }
+  },
+);
+
+router.post(
   "/upload-images",
   upload.fields([
     { name: "face", maxCount: 1 },
