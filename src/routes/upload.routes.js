@@ -111,13 +111,21 @@ router.post(
       }
 
       const baseUrl = `${req.protocol}://${req.get("host")}/`;
-
       const filePath = req.file.path;
+
+      // احفظ المسار النسبي فقط بدون "uploads/" في البداية
+      // لأن req.file.path يأتي بصيغة "uploads/others/filename.jpg"
+      const relativePath = filePath.replace(/\\/g, "/"); // تحويل backslashes إلى forward slashes
+
+      console.log("File uploaded:");
+      console.log("- Original path:", req.file.path);
+      console.log("- Relative path:", relativePath);
+      console.log("- Full URL:", baseUrl + relativePath);
 
       res.json({
         success: true,
-        imageUrl: baseUrl + filePath,
-        imagePath: filePath,
+        imageUrl: baseUrl + relativePath,
+        imagePath: relativePath, // احفظ المسار الكامل مع uploads
       });
     } catch (error) {
       console.error("UPLOAD ERROR:", error);
@@ -128,11 +136,11 @@ router.post(
     }
   },
 );
-
 router.delete("/delete-featured-destination-image", async (req, res) => {
   try {
     const { imagePath } = req.body;
 
+    console.log("=== DELETE REQUEST ===");
     console.log("Received imagePath:", imagePath);
 
     if (!imagePath) {
@@ -142,13 +150,8 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    // Remove the base path if it exists (uploads/ or uploads\)
-    let cleanPath = imagePath;
-
-    // إزالة "uploads/" أو "uploads\" من البداية إذا وجد
-    if (cleanPath.startsWith("uploads/") || cleanPath.startsWith("uploads\\")) {
-      cleanPath = cleanPath.replace(/^uploads[\/\\]/, "");
-    }
+    // تحويل backslashes إلى forward slashes
+    let cleanPath = imagePath.replace(/\\/g, "/");
 
     console.log("Clean path:", cleanPath);
 
@@ -159,17 +162,26 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
 
     console.log("Normalized path:", normalizedPath);
 
-    // uploads directory
-    const uploadsDir = path.join(__dirname, "..", "uploads");
+    // المسار الأساسي للمشروع
+    const projectRoot = path.join(__dirname, "..");
 
-    // Combine uploadsDir + normalizedPath
-    const fullPath = path.join(uploadsDir, normalizedPath);
+    // المسار الكامل للملف
+    // إذا كان المسار يبدأ بـ "uploads/" استخدمه مباشرة
+    // وإلا أضف "uploads/" قبله
+    let fullPath;
+    if (normalizedPath.startsWith("uploads")) {
+      fullPath = path.join(projectRoot, normalizedPath);
+    } else {
+      fullPath = path.join(projectRoot, "uploads", normalizedPath);
+    }
 
+    console.log("Project root:", projectRoot);
     console.log("Full path:", fullPath);
-    console.log("Uploads dir:", uploadsDir);
 
-    // Extra safety: make sure fullPath is inside uploadsDir
+    // Extra safety: make sure fullPath is inside project uploads
+    const uploadsDir = path.join(projectRoot, "uploads");
     if (!fullPath.startsWith(uploadsDir)) {
+      console.log("Security check failed - path outside uploads dir");
       return res.status(403).json({
         success: false,
         message: "غير مسموح بحذف هذا الملف",
@@ -179,17 +191,42 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
     // Check if file exists
     if (!fs.existsSync(fullPath)) {
       console.log("File not found at:", fullPath);
-      return res.status(404).json({
-        success: false,
-        message: "الملف غير موجود",
-        path: fullPath, // للتشخيص فقط - احذفها في الإنتاج
-      });
+
+      // جرب مسارات بديلة
+      const alternativePaths = [
+        path.join(projectRoot, cleanPath),
+        path.join(projectRoot, "uploads", cleanPath.replace("uploads/", "")),
+        path.join(__dirname, cleanPath),
+      ];
+
+      console.log("Trying alternative paths:", alternativePaths);
+
+      let foundPath = null;
+      for (const altPath of alternativePaths) {
+        if (fs.existsSync(altPath) && altPath.startsWith(uploadsDir)) {
+          foundPath = altPath;
+          console.log("Found file at alternative path:", altPath);
+          break;
+        }
+      }
+
+      if (!foundPath) {
+        return res.status(404).json({
+          success: false,
+          message: "الملف غير موجود",
+          requestedPath: imagePath,
+          searchedPath: fullPath,
+        });
+      }
+
+      fullPath = foundPath;
     }
 
     // Delete the file
     await fs.promises.unlink(fullPath);
 
     console.log("File deleted successfully:", fullPath);
+    console.log("===================");
 
     res.json({
       success: true,
