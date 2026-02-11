@@ -148,6 +148,44 @@ router.post(
   },
 );
 
+// ✅ NEW ENDPOINT: حذف صورة وجهة سياحية
+router.delete("/delete-featured-destination-image", async (req, res) => {
+  try {
+    const { imagePath } = req.body;
+
+    if (!imagePath) {
+      return res.status(400).json({
+        success: false,
+        message: "مسار الصورة مطلوب",
+      });
+    }
+
+    const fullPath = path.join(__dirname, "..", imagePath);
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      console.log("Deleted image:", fullPath);
+
+      res.json({
+        success: true,
+        message: "تم حذف الصورة بنجاح",
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "الملف غير موجود",
+      });
+    }
+  } catch (error) {
+    console.error("Error deleting image:", error);
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ أثناء حذف الصورة",
+      error: error.message,
+    });
+  }
+});
+
 router.post(
   "/upload-images",
   upload.fields([
