@@ -103,9 +103,6 @@ router.post(
   upload.single("destinationImage"),
   async (req, res) => {
     try {
-      console.log("FILE:", req.file);
-      console.log("BODY:", req.body);
-
       if (!req.file) {
         return res.status(400).json({
           success: false,
@@ -113,13 +110,9 @@ router.post(
         });
       }
 
-      const { placeName } = req.body;
-      console.log("placeName:", placeName);
-
       const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
       const filePath = req.file.path;
-      console.log("filePath:", filePath);
 
       res.json({
         success: true,
@@ -147,18 +140,14 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    // ✅ منع Path Traversal Attack
     const normalizedPath = path
       .normalize(imagePath)
       .replace(/^(\.\.(\/|\\|$))+/, "");
 
-    // ✅ فولدر الصور الأساسي
     const uploadsDir = path.join(__dirname, "..", "uploads");
 
-    // ✅ المسار النهائي
     const fullPath = path.join(uploadsDir, normalizedPath);
 
-    // ✅ تأكد إن الملف جوه فولدر uploads بس
     if (!fullPath.startsWith(uploadsDir)) {
       return res.status(403).json({
         success: false,
@@ -166,7 +155,6 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    // ✅ تحقق وجود الملف
     if (!fs.existsSync(fullPath)) {
       return res.status(404).json({
         success: false,
@@ -174,10 +162,7 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    // ✅ حذف Async أفضل من Sync
     await fs.promises.unlink(fullPath);
-
-    console.log("Deleted image:", fullPath);
 
     res.json({
       success: true,
