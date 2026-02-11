@@ -133,6 +133,8 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
   try {
     const { imagePath } = req.body;
 
+    console.log("Received imagePath:", imagePath);
+
     if (!imagePath) {
       return res.status(400).json({
         success: false,
@@ -140,16 +142,31 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
+    // Remove the base path if it exists (uploads/ or uploads\)
+    let cleanPath = imagePath;
+
+    // إزالة "uploads/" أو "uploads\" من البداية إذا وجد
+    if (cleanPath.startsWith("uploads/") || cleanPath.startsWith("uploads\\")) {
+      cleanPath = cleanPath.replace(/^uploads[\/\\]/, "");
+    }
+
+    console.log("Clean path:", cleanPath);
+
     // Normalize the path and prevent directory traversal
     const normalizedPath = path
-      .normalize(imagePath)
+      .normalize(cleanPath)
       .replace(/^(\.\.(\/|\\|$))+/, "");
+
+    console.log("Normalized path:", normalizedPath);
 
     // uploads directory
     const uploadsDir = path.join(__dirname, "..", "uploads");
 
     // Combine uploadsDir + normalizedPath
     const fullPath = path.join(uploadsDir, normalizedPath);
+
+    console.log("Full path:", fullPath);
+    console.log("Uploads dir:", uploadsDir);
 
     // Extra safety: make sure fullPath is inside uploadsDir
     if (!fullPath.startsWith(uploadsDir)) {
@@ -161,14 +178,18 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
 
     // Check if file exists
     if (!fs.existsSync(fullPath)) {
+      console.log("File not found at:", fullPath);
       return res.status(404).json({
         success: false,
         message: "الملف غير موجود",
+        path: fullPath, // للتشخيص فقط - احذفها في الإنتاج
       });
     }
 
     // Delete the file
     await fs.promises.unlink(fullPath);
+
+    console.log("File deleted successfully:", fullPath);
 
     res.json({
       success: true,
@@ -176,7 +197,6 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
     });
   } catch (error) {
     console.error("Error deleting image:", error);
-
     res.status(500).json({
       success: false,
       message: "حدث خطأ أثناء حذف الصورة",
