@@ -99,6 +99,9 @@ router.post(
   upload.single("destinationImage"),
   async (req, res) => {
     try {
+      console.log("FILE:", req.file);
+      console.log("BODY:", req.body);
+
       if (!req.file) {
         return res.status(400).json({
           success: false,
@@ -107,48 +110,28 @@ router.post(
       }
 
       const { placeName } = req.body;
+      console.log("placeName:", placeName);
+
       const baseUrl = `${req.protocol}://${req.get("host")}/`;
 
-      // إنشاء اسم فريد للملف
-      const timestamp = Date.now();
-      const sanitizedPlaceName = placeName
-        ? placeName.replace(/\s+/g, "-")
-        : "destination";
-      const fileName = `featured-destinations/${sanitizedPlaceName}-${timestamp}`;
-
-      // مسار الملف الكامل
       const filePath = req.file.path;
-      const newFilePath = path.join(
-        path.dirname(filePath),
-        `${sanitizedPlaceName}-${timestamp}${path.extname(filePath)}`,
-      );
-
-      // إعادة تسمية الملف
-      fs.renameSync(filePath, newFilePath);
-
-      // رابط الصورة
-      const relativePath = newFilePath.replace(path.join(__dirname, ".."), "");
-      const imageUrl = baseUrl + relativePath.replace(/\\/g, "/");
+      console.log("filePath:", filePath);
 
       res.json({
         success: true,
-        message: "تم رفع الصورة بنجاح",
-        imageUrl: imageUrl,
-        imagePath: relativePath,
-        fileName: path.basename(newFilePath),
+        imageUrl: baseUrl + filePath,
+        imagePath: filePath,
       });
     } catch (error) {
-      console.error("Error uploading destination image:", error);
+      console.error("UPLOAD ERROR:", error);
       res.status(500).json({
         success: false,
-        message: "حدث خطأ أثناء رفع الصورة",
         error: error.message,
       });
     }
   },
 );
 
-// ✅ NEW ENDPOINT: حذف صورة وجهة سياحية
 router.delete("/delete-featured-destination-image", async (req, res) => {
   try {
     const { imagePath } = req.body;
