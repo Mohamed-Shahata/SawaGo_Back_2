@@ -147,24 +147,45 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    const fullPath = path.join(__dirname, "..", imagePath);
+    // ✅ منع Path Traversal Attack
+    const normalizedPath = path
+      .normalize(imagePath)
+      .replace(/^(\.\.(\/|\\|$))+/, "");
 
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-      console.log("Deleted image:", fullPath);
+    // ✅ فولدر الصور الأساسي
+    const uploadsDir = path.join(__dirname, "..", "uploads");
 
-      res.json({
-        success: true,
-        message: "تم حذف الصورة بنجاح",
+    // ✅ المسار النهائي
+    const fullPath = path.join(uploadsDir, normalizedPath);
+
+    // ✅ تأكد إن الملف جوه فولدر uploads بس
+    if (!fullPath.startsWith(uploadsDir)) {
+      return res.status(403).json({
+        success: false,
+        message: "غير مسموح بحذف هذا الملف",
       });
-    } else {
-      res.status(404).json({
+    }
+
+    // ✅ تحقق وجود الملف
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({
         success: false,
         message: "الملف غير موجود",
       });
     }
+
+    // ✅ حذف Async أفضل من Sync
+    await fs.promises.unlink(fullPath);
+
+    console.log("Deleted image:", fullPath);
+
+    res.json({
+      success: true,
+      message: "تم حذف الصورة بنجاح",
+    });
   } catch (error) {
     console.error("Error deleting image:", error);
+
     res.status(500).json({
       success: false,
       message: "حدث خطأ أثناء حذف الصورة",
