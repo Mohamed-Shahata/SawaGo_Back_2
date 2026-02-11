@@ -140,14 +140,18 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
+    // Normalize the path and prevent directory traversal
     const normalizedPath = path
       .normalize(imagePath)
       .replace(/^(\.\.(\/|\\|$))+/, "");
 
+    // uploads directory
     const uploadsDir = path.join(__dirname, "..", "uploads");
 
+    // Combine uploadsDir + normalizedPath
     const fullPath = path.join(uploadsDir, normalizedPath);
 
+    // Extra safety: make sure fullPath is inside uploadsDir
     if (!fullPath.startsWith(uploadsDir)) {
       return res.status(403).json({
         success: false,
@@ -155,6 +159,7 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
+    // Check if file exists
     if (!fs.existsSync(fullPath)) {
       return res.status(404).json({
         success: false,
@@ -162,6 +167,7 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
+    // Delete the file
     await fs.promises.unlink(fullPath);
 
     res.json({
