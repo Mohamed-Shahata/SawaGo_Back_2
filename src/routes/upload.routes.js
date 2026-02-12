@@ -2,10 +2,7 @@ import express from "express";
 import { upload } from "../config/multer.config.js";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getProjectRoot, getUploadsDir } from "../utils/path.utils.js";
 
 const router = express.Router();
 
@@ -111,16 +108,15 @@ router.post(
       }
 
       const baseUrl = `${req.protocol}://${req.get("host")}/`;
-      const filePath = req.file.path;
 
-      // احفظ المسار النسبي فقط بدون "uploads/" في البداية
-      // لأن req.file.path يأتي بصيغة "uploads/others/filename.jpg"
-      const relativePath = filePath.replace(/\\/g, "/"); // تحويل backslashes إلى forward slashes
+      // المسار النسبي من req.file.path (مثل: uploads/others/123456.jpg)
+      const relativePath = req.file.path.replace(/\\/g, "/");
 
-      console.log("File uploaded:");
-      console.log("- Original path:", req.file.path);
+      console.log("=== UPLOAD SUCCESS ===");
+      console.log("- File uploaded to:", req.file.path);
       console.log("- Relative path:", relativePath);
       console.log("- Full URL:", baseUrl + relativePath);
+      console.log("===================");
 
       res.json({
         success: true,
@@ -136,6 +132,7 @@ router.post(
     }
   },
 );
+
 router.delete("/delete-featured-destination-image", async (req, res) => {
   try {
     const { imagePath } = req.body;
@@ -150,36 +147,22 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    // تحويل backslashes إلى forward slashes
-    let cleanPath = imagePath.replace(/\\/g, "/");
-
-    console.log("Clean path:", cleanPath);
-
-    // Normalize the path and prevent directory traversal
-    const normalizedPath = path
-      .normalize(cleanPath)
-      .replace(/^(\.\.(\/|\\|$))+/, "");
-
-    console.log("Normalized path:", normalizedPath);
-
-    // المسار الأساسي للمشروع
-    const projectRoot = path.join(__dirname, "..");
-
-    // المسار الكامل للملف
-    // إذا كان المسار يبدأ بـ "uploads/" استخدمه مباشرة
-    // وإلا أضف "uploads/" قبله
-    let fullPath;
-    if (normalizedPath.startsWith("uploads")) {
-      fullPath = path.join(projectRoot, normalizedPath);
-    } else {
-      fullPath = path.join(projectRoot, "uploads", normalizedPath);
-    }
+    // استخدم الـ utility للحصول على المسار الصحيح
+    const projectRoot = getProjectRoot();
+    const uploadsDir = getUploadsDir();
 
     console.log("Project root:", projectRoot);
-    console.log("Full path:", fullPath);
+    console.log("Uploads dir:", uploadsDir);
 
-    // Extra safety: make sure fullPath is inside project uploads
-    const uploadsDir = path.join(projectRoot, "uploads");
+    // تنظيف المسار
+    const cleanPath = imagePath.replace(/\\/g, "/");
+    console.log("Clean path:", cleanPath);
+
+    // بناء المسار الكامل
+    const fullPath = path.join(projectRoot, cleanPath);
+    console.log("Full path to delete:", fullPath);
+
+    // التحقق من الأمان
     if (!fullPath.startsWith(uploadsDir)) {
       console.log("Security check failed - path outside uploads dir");
       return res.status(403).json({
@@ -188,44 +171,31 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
       });
     }
 
-    // Check if file exists
+    // التحقق من وجود الملف
     if (!fs.existsSync(fullPath)) {
       console.log("File not found at:", fullPath);
 
-      // جرب مسارات بديلة
-      const alternativePaths = [
-        path.join(projectRoot, cleanPath),
-        path.join(projectRoot, "uploads", cleanPath.replace("uploads/", "")),
-        path.join(__dirname, cleanPath),
-      ];
-
-      console.log("Trying alternative paths:", alternativePaths);
-
-      let foundPath = null;
-      for (const altPath of alternativePaths) {
-        if (fs.existsSync(altPath) && altPath.startsWith(uploadsDir)) {
-          foundPath = altPath;
-          console.log("Found file at alternative path:", altPath);
-          break;
-        }
+      // طباعة محتويات المجلد للتشخيص
+      const dirname = path.dirname(fullPath);
+      if (fs.existsSync(dirname)) {
+        const files = fs.readdirSync(dirname);
+        console.log("Files in directory:", files);
+      } else {
+        console.log("Directory does not exist:", dirname);
       }
 
-      if (!foundPath) {
-        return res.status(404).json({
-          success: false,
-          message: "الملف غير موجود",
-          requestedPath: imagePath,
-          searchedPath: fullPath,
-        });
-      }
-
-      fullPath = foundPath;
+      return res.status(404).json({
+        success: false,
+        message: "الملف غير موجود",
+        requestedPath: imagePath,
+        searchedPath: fullPath,
+      });
     }
 
-    // Delete the file
+    // حذف الملف
     await fs.promises.unlink(fullPath);
 
-    console.log("File deleted successfully:", fullPath);
+    console.log("✓ File deleted successfully:", fullPath);
     console.log("===================");
 
     res.json({
