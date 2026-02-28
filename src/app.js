@@ -4,6 +4,7 @@ import cors from "cors";
 import uploadRoutes from "./routes/upload.routes.js";
 import popularityRoutes from "./routes/popularity.routes.js";
 import webhooksRoutes from "./routes/Webhooks.routes.js";
+import emailRoutes from "./routes/send_email.routes.js";
 
 const app = express();
 
