@@ -218,7 +218,8 @@ router.post(
     { name: "face", maxCount: 1 },
     { name: "idFront", maxCount: 1 },
     { name: "idBack", maxCount: 1 },
-    { name: "license", maxCount: 1 },
+    { name: "licenseFront", maxCount: 1 },
+    { name: "licenseBack", maxCount: 1 },
   ]),
   (req, res) => {
     const files = req.files;
@@ -228,7 +229,12 @@ router.post(
       face: files.face ? baseUrl + files.face[0].path : null,
       idFront: files.idFront ? baseUrl + files.idFront[0].path : null,
       idBack: files.idBack ? baseUrl + files.idBack[0].path : null,
-      license: files.license ? baseUrl + files.license[0].path : null,
+      licenseFront: files.licenseFront
+        ? baseUrl + files.licenseFront[0].path
+        : null,
+      licenseBack: files.licenseBack
+        ? baseUrl + files.licenseBack[0].path
+        : null,
     };
 
     res.json({ urls });
