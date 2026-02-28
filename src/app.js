@@ -23,5 +23,6 @@ app.get("/health", (req, res) => {
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/popularity", popularityRoutes);
 app.use("/api/webhooks", webhooksRoutes);
+app.use("/api/email", emailRoutes);
 
 export default app;
