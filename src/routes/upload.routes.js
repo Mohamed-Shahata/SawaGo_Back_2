@@ -8,20 +8,30 @@ const router = express.Router();
 
 // ============================================================
 // Helper: بناء الـ base URL
+// بيستخدم BACKEND_URL من env أو يبنيه من الـ request مع trust proxy
 // ============================================================
-const getBaseUrl = (req) => `${req.protocol}://${req.get("host")}/`;
+const getBaseUrl = (req) => {
+  // لو في environment variable محدد استخدمه (الأضمن على Railway)
+  if (process.env.BACKEND_URL) {
+    return process.env.BACKEND_URL.replace(/\/$/, "") + "/";
+  }
+  // وإلا ابنيه من الـ request (بيشتغل صح بعد trust proxy)
+  const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+  const host = req.headers["x-forwarded-host"] || req.get("host");
+  return `${protocol}://${host}/`;
+};
 
 // ============================================================
-// Helper: تنظيف مسار الملف للـ URL
+// Helper: تحويل path الملف لـ URL
 // ============================================================
 const fileToUrl = (baseUrl, filePath) => {
   if (!filePath) return null;
+  // normalize backslashes للـ Windows
   return baseUrl + filePath.replace(/\\/g, "/");
 };
 
 // ============================================================
 // POST /upload-face-and-id
-// الاستخدام: رفع صورة الوجه + البطاقة (للمستخدمين العاديين)
 // ============================================================
 router.post(
   "/upload-face-and-id",
@@ -96,8 +106,7 @@ router.put(
 
 // ============================================================
 // POST /upload-images
-// الاستخدام: رفع كل صور السائق (وجه + بطاقة + رخصة)
-// Fields: face, idFront, idBack, licenseFront, licenseBack
+// رفع كل صور السائق: face, idFront, idBack, licenseFront, licenseBack
 // ============================================================
 router.post(
   "/upload-images",
@@ -139,8 +148,7 @@ router.post(
 
 // ============================================================
 // POST /upload-vehicle-docs
-// الاستخدام: رفع أوراق العربية (يقبل أكثر من صورة لكل ورقة)
-// Fields: vehicleLicense[], vehicleRegistration[], vehicleInsurance[]
+// رفع أوراق العربية: vehicleLicense[], vehicleRegistration[], vehicleInsurance[]
 // ============================================================
 router.post(
   "/upload-vehicle-docs",
@@ -177,8 +185,7 @@ router.post(
 
 // ============================================================
 // POST /upload-others
-// الاستخدام: رفع صور إضافية (others) للعربية أو أي مستندات أخرى
-// Field: others[] (max 10)
+// رفع صور إضافية (max 10)
 // ============================================================
 router.post(
   "/upload-others",
@@ -202,8 +209,7 @@ router.post(
 
 // ============================================================
 // POST /upload-video
-// الاستخدام: رفع فيديو التحقق للسائق
-// Field: video (single file, max 100MB)
+// رفع فيديو التحقق (max 100MB)
 // ============================================================
 router.post("/upload-video", upload.single("video"), (req, res) => {
   if (!req.file) {
@@ -219,7 +225,6 @@ router.post("/upload-video", upload.single("video"), (req, res) => {
   console.log("- File:", req.file.originalname);
   console.log("- Size:", (req.file.size / (1024 * 1024)).toFixed(2), "MB");
   console.log("- URL:", url);
-  console.log("===========================");
 
   res.json({
     success: true,
@@ -242,19 +247,12 @@ router.post(
           .status(400)
           .json({ success: false, message: "لم يتم رفع أي صورة" });
       }
-
       const baseUrl = getBaseUrl(req);
       const relativePath = req.file.path.replace(/\\/g, "/");
       const imageUrl = baseUrl + relativePath;
 
-      console.log("=== UPLOAD SUCCESS ===");
-      console.log("- File uploaded to:", req.file.path);
-      console.log("- Full URL:", imageUrl);
-      console.log("===================");
-
       res.json({ success: true, imageUrl, imagePath: relativePath });
     } catch (error) {
-      console.error("UPLOAD ERROR:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   },
@@ -266,7 +264,6 @@ router.post(
 router.delete("/delete-featured-destination-image", async (req, res) => {
   try {
     const { imagePath } = req.body;
-
     if (!imagePath) {
       return res
         .status(400)
@@ -283,24 +280,26 @@ router.delete("/delete-featured-destination-image", async (req, res) => {
         .status(403)
         .json({ success: false, message: "غير مسموح بحذف هذا الملف" });
     }
-
     if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({
-        success: false,
-        message: "الملف غير موجود",
-        requestedPath: imagePath,
-      });
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "الملف غير موجود",
+          requestedPath: imagePath,
+        });
     }
 
     await fs.promises.unlink(fullPath);
     res.json({ success: true, message: "تم حذف الصورة بنجاح" });
   } catch (error) {
-    console.error("Error deleting image:", error);
-    res.status(500).json({
-      success: false,
-      message: "حدث خطأ أثناء حذف الصورة",
-      error: error.message,
-    });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "حدث خطأ أثناء حذف الصورة",
+        error: error.message,
+      });
   }
 });
 
