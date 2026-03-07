@@ -5,6 +5,7 @@ import uploadRoutes from "./routes/upload.routes.js";
 import popularityRoutes from "./routes/popularity.routes.js";
 import webhooksRoutes from "./routes/Webhooks.routes.js";
 import emailRoutes from "./routes/send_email.routes.js";
+import authRoutes from "./routes/email_verification_routes.js";
 
 const app = express();
 
@@ -32,5 +33,6 @@ app.use("/api/uploads", uploadRoutes);
 app.use("/api/popularity", popularityRoutes);
 app.use("/api/webhooks", webhooksRoutes);
 app.use("/api/email", emailRoutes);
+app.use("/api/auth", authRoutes);
 
 export default app;
